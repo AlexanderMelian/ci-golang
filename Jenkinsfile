@@ -1,16 +1,26 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'golang:1.26'
+            reuseNode true
+        }
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
 
     stages {
-        stage('Checkout') {
+        stage('Info') {
             steps {
-                checkout scm
+                sh 'go version'
             }
         }
 
-        stage('Go Version') {
+        stage('Format') {
             steps {
-                sh 'go version'
+                sh 'test -z "$(gofmt -l .)"'
             }
         }
 
@@ -22,20 +32,23 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'go test ./... -v'
+                sh '''
+                    go install gotest.tools/gotestsum@latest
+                    /go/bin/gotestsum --junitfile junit.xml -- -v ./...
+                '''
             }
         }
     }
 
     post {
+        always {
+            junit testResults: 'junit.xml', allowEmptyResults: true
+        }
         success {
             echo 'Build y tests OK'
         }
         failure {
             echo 'Falló el pipeline'
-        }
-        always {
-            echo 'Pipeline finalizado'
         }
     }
 }
