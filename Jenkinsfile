@@ -6,6 +6,11 @@ pipeline {
         disableConcurrentBuilds()
     }
 
+    environment {
+        GOCACHE = "${WORKSPACE}/.gocache"
+        GOMODCACHE = "${WORKSPACE}/.gomodcache"
+    }
+
     stages {
         stage('Info') {
             agent {
@@ -39,19 +44,23 @@ pipeline {
                 }
             }
             steps {
-                sh 'go build ./...'
+                sh '''
+                    mkdir -p "$GOCACHE" "$GOMODCACHE"
+                    go build ./...
+                '''
             }
         }
 
         stage('Test') {
             agent {
                 docker {
-                    image 'golang:1.26'
+                    image 'golang:1.24'
                     reuseNode true
                 }
             }
             steps {
                 sh '''
+                    mkdir -p "$GOCACHE" "$GOMODCACHE"
                     go install gotest.tools/gotestsum@latest
                     /go/bin/gotestsum --junitfile junit.xml -- -v ./...
                 '''
